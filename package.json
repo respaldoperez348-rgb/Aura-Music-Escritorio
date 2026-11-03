@@ -1,0 +1,55 @@
+{
+  "name": "aura-music-desktop",
+  "version": "1.0.0",
+  "description": "Aura Music Desktop - Cyberpunk Audio Player & Mobile Sync Hub",
+  "main": "main.js",
+  "scripts": {
+    "start": "unset ELECTRON_RUN_AS_NODE && electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux AppImage deb pacman",
+    "dist:win": "electron-builder --windows nsis"
+  },
+  "keywords": [
+    "music",
+    "audio",
+    "electron",
+    "cyberpunk",
+    "firebase",
+    "sync",
+    "android"
+  ],
+  "author": "David Tineo",
+  "license": "MIT",
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.4",
+    "firebase-admin": "^13.1.0",
+    "play-dl": "^1.9.7",
+    "yt-search": "^2.12.1"
+  },
+  "devDependencies": {
+    "electron": "^34.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.auramusic.desktop",
+    "productName": "Aura Music",
+    "directories": {
+      "output": "dist"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb",
+        "pacman"
+      ],
+      "category": "AudioVideo"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    }
+  }
+}
+

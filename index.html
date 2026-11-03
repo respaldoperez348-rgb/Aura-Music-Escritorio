@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura Music Desktop</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="assets/lucide.min.js"></script>
+</head>
+<body>
+    <div class="window-shell">
+        <!-- TITLEBAR -->
+        <header class="window-titlebar">
+            <div class="window-drag-region">
+                <div class="brand">
+                    <img src="assets/aura_logo_round.webp" alt="Aura Logo" class="brand-app-icon">
+                    <span class="brand-title">AURA</span>
+                    <span class="brand-tag">DESKTOP</span>
+                </div>
+
+                <div class="sync-status-pill" id="btnEditSync" title="Gestionar código de sincronización">
+                    <span class="status-orb"></span>
+                    <span class="status-code" id="pillSyncCode">aura_sync_98d4c912</span>
+                    <span class="status-badge">VINCULADO</span>
+                </div>
+
+                <div class="titlebar-search-box">
+                    <i data-lucide="search" class="titlebar-search-icon"></i>
+                    <input type="text" id="globalSearchInput" placeholder="Buscar canciones, artistas en YouTube..." autocomplete="off">
+                    <button class="titlebar-search-clear" id="searchClearBtn" title="Limpiar búsqueda" style="display: none;">
+                        <i data-lucide="x" class="search-clear-icon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="window-controls">
+                <button class="win-btn" id="btnMinimize" title="Minimizar">
+                    <i data-lucide="minus" class="win-icon"></i>
+                </button>
+                <button class="win-btn" id="btnMaximize" title="Maximizar">
+                    <i data-lucide="square" class="win-icon"></i>
+                </button>
+                <button class="win-btn win-close" id="btnClose" title="Cerrar">
+                    <i data-lucide="x" class="win-icon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN SHELL -->
+        <div class="app-container">
+            <!-- SIDEBAR (DOCK FLOTANTE DE SÓLO ICONOS) -->
+            <aside class="sidebar">
+                <nav class="nav-menu">
+                    <button class="nav-item active" data-view="home" data-tooltip="Inicio">
+                        <i data-lucide="home" class="nav-icon"></i>
+                    </button>
+                    <button class="nav-item" data-view="favorites" data-tooltip="Favoritos">
+                        <i data-lucide="heart" class="nav-icon nav-icon-fav"></i>
+                        <span class="nav-badge" id="badgeFavorites" style="display:none;">0</span>
+                    </button>
+                    <button class="nav-item" data-view="all" data-tooltip="Todas las Canciones">
+                        <i data-lucide="music-2" class="nav-icon"></i>
+                        <span class="nav-badge" id="badgeAll" style="display:none;">0</span>
+                    </button>
+                    <button class="nav-item" data-view="artists" data-tooltip="Artistas">
+                        <i data-lucide="users" class="nav-icon"></i>
+                        <span class="nav-badge" id="badgeArtists" style="display:none;">0</span>
+                    </button>
+                    <button class="nav-item" data-view="albums" data-tooltip="Álbumes">
+                        <i data-lucide="disc-3" class="nav-icon"></i>
+                        <span class="nav-badge" id="badgeAlbums" style="display:none;">0</span>
+                    </button>
+                    <button class="nav-item" data-view="playlists" data-tooltip="Listas de Reproducción">
+                        <i data-lucide="list-music" class="nav-icon"></i>
+                        <span class="nav-badge" id="badgePlaylists" style="display:none;">0</span>
+                    </button>
+
+                    <div class="nav-divider"></div>
+
+                    <button class="nav-item" data-view="youtube" data-tooltip="Búsqueda YouTube">
+                        <i data-lucide="globe" class="nav-icon"></i>
+                    </button>
+                </nav>
+
+                <!-- BOTONES INFERIORES: TEMA, CONFIGURACIÓN, DISPOSITIVO MÓVIL -->
+                <div class="sidebar-bottom">
+                    <button class="sidebar-action-btn" id="btnThemeToggle" data-tooltip="Alternar Modo Oscuro / Claro">
+                        <i data-lucide="sun" class="sidebar-action-icon" id="themeToggleIcon"></i>
+                    </button>
+                    <button class="sidebar-action-btn" id="btnOpenSettings" data-tooltip="Configuración">
+                        <i data-lucide="settings" class="sidebar-action-icon"></i>
+                    </button>
+                    <button class="device-icon-btn" id="btnToggleDevicePanel" data-tooltip="Xiaomi 2303ERA42L (Sincronizado)">
+                        <i data-lucide="smartphone" class="device-btn-icon"></i>
+                        <span class="device-online-dot"></span>
+                    </button>
+                </div>
+            </aside>
+
+            <!-- PANEL FLOTANTE SEMITRANSPARENTE (SE EXPANDE AL DAR CLICK AL CELULAR) -->
+            <div class="sync-floating-popover" id="syncFloatingPopover">
+                <div class="popover-header">
+                    <div class="device-avatar">
+                        <i data-lucide="smartphone" class="device-icon"></i>
+                    </div>
+                    <div class="sync-device-info">
+                        <div class="sync-device-name" id="syncDeviceModel">Xiaomi 2303ERA42L</div>
+                        <div class="sync-device-status" id="syncLastTime">Sincronizado en tiempo real</div>
+                    </div>
+                    <button class="popover-close-btn" id="btnCloseDevicePopover" title="Cerrar panel">
+                        <i data-lucide="x" class="close-icon"></i>
+                    </button>
+                </div>
+
+                <div class="sync-code-row">
+                    <code id="syncCodeDisplay">aura_sync_98d4c912</code>
+                    <button class="btn-copy-code" id="btnCopyCode" title="Copiar código FCM">
+                        <i data-lucide="copy" class="copy-icon"></i>
+                    </button>
+                </div>
+
+                <button class="btn-force-sync" id="btnForceSync">
+                    <i data-lucide="refresh-cw" class="btn-sync-icon"></i>
+                    <span>FORZAR SYNC MÓVIL</span>
+                </button>
+
+                <div class="telemetry-bar">
+                    <span>FCM v1 • HTTP/2</span>
+                    <span class="telemetry-ping">● 38ms</span>
+                </div>
+            </div>
+
+            <!-- MAIN CONTENT -->
+            <main class="main-content">
+                <!-- VISTA HOME (INICIO PRINCIPAL) -->
+                <div id="homeViewWrapper" class="home-view-wrapper">
+                    <header class="home-header">
+                        <div class="home-greeting-row">
+                            <div class="home-greeting-text">
+                                <div class="home-date-chip">
+                                    <i data-lucide="calendar" class="date-chip-icon"></i>
+                                    <span id="homeLiveDate">Lunes, 2 de noviembre de 2026</span>
+                                </div>
+                                <h1 id="homeGreetingTitle" class="home-greeting-title">Buenas tardes, David</h1>
+                                <p class="home-greeting-subtitle">Tu biblioteca musical sincronizada en vivo desde tu dispositivo Android</p>
+                            </div>
+                            <div class="home-stats-pill">
+                                <span class="home-stat-item"><strong id="homeStatSongs">0</strong> <span id="labelStatSongs">temas</span></span>
+                                <span class="home-stat-sep">•</span>
+                                <span class="home-stat-item"><strong id="homeStatFavs">0</strong> <span id="labelStatFavs">favoritos</span></span>
+                                <span class="home-stat-sep">•</span>
+                                <span class="home-stat-item"><strong id="homeStatArtists">0</strong> <span id="labelStatArtists">artistas</span></span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <!-- SECCIÓN 1: SELECCIÓN RÁPIDA -->
+                    <section class="home-section">
+                        <div class="home-section-header">
+                            <h2 class="home-section-title">
+                                <i data-lucide="zap" class="home-section-icon icon-cyan"></i>
+                                <span id="homeTitleQuickPicks">Selección Rápida</span>
+                            </h2>
+                            <span class="home-section-tag" id="homeTagQuickPicks">Para empezar a escuchar</span>
+                        </div>
+                        <div class="quick-picks-grid" id="homeQuickPicks">
+                            <!-- Tarjetas 2x3 de selección rápida -->
+                        </div>
+                    </section>
+
+                    <!-- SECCIÓN: ARTISTAS QUE SIGUES -->
+                    <section class="home-section" id="sectionFollowedArtists">
+                        <div class="home-section-header">
+                            <h2 class="home-section-title">
+                                <i data-lucide="heart" class="home-section-icon icon-pink"></i>
+                                <span id="homeTitleFollowedArtists">Artistas que sigues</span>
+                            </h2>
+                            <span class="home-section-tag" id="tagFollowedArtistsCount">De tu biblioteca móvil</span>
+                        </div>
+                        <div class="home-artists-carousel" id="homeFollowedArtists">
+                            <!-- Tarjetas de artistas sincronizados de Android -->
+                        </div>
+                    </section>
+
+                    <!-- SECCIÓN: ARTISTAS POPULARES -->
+                    <section class="home-section">
+                        <div class="home-section-header">
+                            <h2 class="home-section-title">
+                                <i data-lucide="users" class="home-section-icon icon-purple"></i>
+                                <span id="homeTitlePopularArtists">Artistas Populares</span>
+                            </h2>
+                            <span class="home-section-tag" id="homeTagPopularArtists">Tendencias mundiales</span>
+                        </div>
+                        <div class="home-artists-carousel" id="homeTopArtists">
+                            <!-- Tarjetas circulares de artistas -->
+                        </div>
+                    </section>
+
+                    <!-- SECCIÓN 3: ÁLBUMES DESTACADOS -->
+                    <section class="home-section">
+                        <div class="home-section-header">
+                            <h2 class="home-section-title">
+                                <i data-lucide="disc-3" class="home-section-icon icon-cyan"></i>
+                                <span id="homeTitleFeaturedAlbums">Álbumes Destacados</span>
+                            </h2>
+                            <span class="home-section-tag" id="homeTagFeaturedAlbums">Discos guardados</span>
+                        </div>
+                        <div class="home-albums-grid" id="homeFeaturedAlbums">
+                            <!-- Tarjetas de álbumes -->
+                        </div>
+                    </section>
+
+                    <!-- SECCIÓN 4: TENDENCIAS GLOBALES -->
+                    <section class="home-section">
+                        <div class="home-section-header">
+                            <h2 class="home-section-title">
+                                <i data-lucide="trending-up" class="home-section-icon icon-pink"></i>
+                                <span id="homeTitleTrending">Tendencias Globales</span>
+                            </h2>
+                            <span class="home-section-tag" id="homeTagTrending">Lo más escuchado</span>
+                        </div>
+                        <div class="home-trending-container" id="homeTrendingTracks">
+                            <!-- Canciones en tendencia -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- VISTA ESTÁNDAR (Favoritos, Canciones, Álbumes, etc.) -->
+                <div id="standardViewWrapper" style="display: none;">
+                    <header class="content-header">
+                        <div class="header-titles">
+                            <h1 id="viewTitle">Mis Favoritos</h1>
+                            <p id="viewSubtitle">Canciones sincronizadas desde tu teléfono en tiempo real</p>
+                        </div>
+                        <div class="header-actions">
+                            <div class="filter-box">
+                                <i data-lucide="filter" class="filter-icon"></i>
+                                <input type="text" id="filterInput" class="filter-input" placeholder="Filtrar en esta lista...">
+                            </div>
+                            <button class="btn-play-all" id="btnPlayAll">
+                                <i data-lucide="play" class="play-all-icon"></i>
+                                <span>REPRODUCIR TODO</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    <section class="tracks-container" id="tracksContainer">
+                        <div class="empty-state">
+                            <i data-lucide="loader-2" class="empty-spinner"></i>
+                            <h3>Cargando biblioteca desde Firestore...</h3>
+                            <p>Conectando con tu sesión móvil <code>aura_sync_98d4c912</code></p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- VISTA INMERSIVA DE DETALLE DE ARTISTA (Ocúlta por defecto) -->
+                <div id="artistDetailView" class="artist-detail-view" style="display: none;">
+                    <div class="artist-back-bar">
+                        <button class="btn-back-artist" id="btnBackToArtists">
+                            <i data-lucide="arrow-left" class="back-icon"></i>
+                            <span>Volver a Artistas</span>
+                        </button>
+                    </div>
+
+                    <div class="artist-hero-card">
+                        <div class="artist-backdrop" id="artistBackdrop"></div>
+                        <div class="artist-hero-content">
+                            <img src="" alt="Artista" class="artist-avatar-lg" id="artistHeroAvatar">
+                            <div class="artist-hero-meta">
+                                <div class="artist-badge-row">
+                                    <span class="artist-type-tag">ARTISTA VERIFICADO</span>
+                                    <i data-lucide="badge-check" class="verified-icon"></i>
+                                </div>
+                                <h1 class="artist-hero-name" id="artistHeroName">Artista</h1>
+                                <div class="artist-listeners" id="artistHeroListeners">40.0M oyentes mensuales • Aura Library</div>
+                                <p class="artist-hero-bio" id="artistHeroBio">Músico y compositor sincronizado directamente con tu cuenta y biblioteca móvil.</p>
+                                <div class="artist-hero-actions">
+                                    <button class="btn-hero-play" id="btnArtistPlayAll">
+                                        <i data-lucide="play" class="hero-action-icon"></i>
+                                        <span>REPRODUCIR TODO</span>
+                                    </button>
+                                    <button class="btn-hero-follow" id="btnArtistFollow">
+                                        <i data-lucide="heart" class="hero-action-icon"></i>
+                                        <span>SIGUIENDO</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pestañas del Artista -->
+                    <div class="artist-tabs-bar">
+                        <button class="artist-tab active" data-tab="songs">Top Canciones</button>
+                        <button class="artist-tab" data-tab="albums">Álbumes</button>
+                        <button class="artist-tab" data-tab="singles">Singles & EPs</button>
+                    </div>
+
+                    <div class="artist-tab-content" id="artistTabContent">
+                        <!-- Pistas o álbumes del artista -->
+                    </div>
+                </div>
+
+                <!-- VISTA INMERSIVA DE DETALLE DE ÁLBUM -->
+                <div id="albumDetailView" class="album-detail-view" style="display: none;">
+                    <div class="artist-back-bar">
+                        <button class="btn-back-artist" id="btnBackFromAlbum">
+                            <i data-lucide="arrow-left" class="back-icon"></i>
+                            <span id="albumBackText">Volver</span>
+                        </button>
+                    </div>
+
+                    <div class="artist-hero-card album-hero-custom">
+                        <div class="artist-backdrop" id="albumBackdrop"></div>
+                        <div class="artist-hero-content">
+                            <img src="" alt="Álbum" class="album-cover-hero" id="albumHeroCover">
+                            <div class="artist-hero-meta">
+                                <div class="artist-badge-row">
+                                    <span class="artist-type-tag">ÁLBUM OFICIAL</span>
+                                    <i data-lucide="disc-3" class="verified-icon"></i>
+                                </div>
+                                <h1 class="artist-hero-name" id="albumHeroTitle">Nombre del Álbum</h1>
+                                <div class="artist-listeners" id="albumHeroArtist">Artista • Disco</div>
+                                <p class="artist-hero-bio" id="albumHeroTracksCount">Cargando canciones...</p>
+                                <div class="artist-hero-actions">
+                                    <button class="btn-hero-play" id="btnAlbumPlayAll">
+                                        <i data-lucide="play" class="hero-action-icon"></i>
+                                        <span>REPRODUCIR ÁLBUM</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LISTA DE CANCIONES DEL ÁLBUM -->
+                    <div class="album-tracks-section" style="margin-top: 24px;">
+                        <div class="tracks-container" id="albumTracksContainer">
+                            <!-- Canciones del álbum -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- PLAYER BAR -->
+        <footer class="player-bar">
+            <!-- Izquierda: Track Info -->
+            <div class="player-track-info">
+                <div class="cover-wrapper">
+                    <img src="https://via.placeholder.com/52/121826/00F0FF?text=▲" alt="Cover" class="track-cover" id="currentCover">
+                    <div class="cover-glow"></div>
+                </div>
+                <div class="track-meta">
+                    <div class="track-title" id="currentTitle">Selecciona una pista</div>
+                    <div class="track-artist-row">
+                        <span class="track-artist" id="currentArtist">Aura Music Desktop</span>
+                        <span class="audio-codec-pill">AAC • 160K</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Centro: Controles de Audio y Progreso -->
+            <div class="player-controls-center">
+                <div class="control-buttons">
+                    <button class="ctrl-btn" id="btnShuffle" title="Aleatorio">
+                        <i data-lucide="shuffle" class="ctrl-icon"></i>
+                    </button>
+                    <button class="ctrl-btn" id="btnPrev" title="Anterior">
+                        <i data-lucide="skip-back" class="ctrl-icon"></i>
+                    </button>
+                    <button class="ctrl-btn play-circle" id="btnPlayPause" title="Reproducir / Pausar">
+                        <i data-lucide="play" class="ctrl-icon play-symbol" id="iconPlayPause"></i>
+                    </button>
+                    <button class="ctrl-btn" id="btnNext" title="Siguiente">
+                        <i data-lucide="skip-forward" class="ctrl-icon"></i>
+                    </button>
+                    <button class="ctrl-btn" id="btnRepeat" title="Repetir">
+                        <i data-lucide="repeat" class="ctrl-icon"></i>
+                    </button>
+                </div>
+                <div class="progress-container">
+                    <span class="time-label" id="currentTime">0:00</span>
+                    <div class="progress-track-wrapper">
+                        <input type="range" class="progress-bar" id="progressBar" min="0" max="100" value="0">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <span class="time-label" id="totalDuration">0:00</span>
+                </div>
+            </div>
+
+            <!-- Derecha: Botón Letras y Botones Push-to-Phone (Solo Iconos) -->
+            <div class="player-actions-right">
+                <button class="player-icon-action-btn btn-lyrics-expand" id="btnToggleLyrics" title="Ver letra e imagen de la canción">
+                    <i data-lucide="mic-2" class="push-icon"></i>
+                </button>
+
+                <button class="player-icon-action-btn btn-fav-phone" id="btnPushFavorite" title="Guardar esta canción en Favoritos de tu Teléfono (Ctrl+Shift+F)">
+                    <i data-lucide="heart" class="push-icon push-icon-heart"></i>
+                </button>
+
+                <button class="player-icon-action-btn btn-download-phone" id="btnPushDownload" title="Descargar audio directamente en tu Celular (Ctrl+Shift+D)">
+                    <i data-lucide="arrow-down-to-line" class="push-icon push-icon-dl"></i>
+                </button>
+            </div>
+        </footer>
+
+        <!-- AUDIO ENGINE -->
+        <audio id="audioElement" preload="auto"></audio>
+
+        <!-- PANTALLA EXPANDIDA DE LETRAS E IMAGEN (SPLIT VIEW) -->
+        <div class="lyrics-overlay" id="lyricsOverlay">
+            <div class="lyrics-backdrop" id="lyricsBackdrop"></div>
+            <div class="lyrics-container">
+                <!-- Barra superior de la vista expandida -->
+                <div class="lyrics-top-bar">
+                    <button class="lyrics-collapse-btn" id="btnCollapseLyrics" title="Minimizar (Esc)">
+                        <i data-lucide="chevron-down" class="lyrics-top-icon"></i>
+                        <span>MINIMIZAR</span>
+                    </button>
+                    <div class="lyrics-now-playing-pill">
+                        <span class="pulse-indicator"></span>
+                        <span>LETRAS EN VIVO</span>
+                    </div>
+                </div>
+
+                <!-- Contenido dividido: Imagen a un costado, Letra al otro -->
+                <div class="lyrics-split-layout">
+                    <!-- Costado Izquierdo: Imagen / Cover Gigante y controles -->
+                    <div class="lyrics-cover-column">
+                        <div class="lyrics-artwork-frame">
+                            <img src="https://via.placeholder.com/380/121826/00F0FF?text=Aura" alt="Cover" class="lyrics-giant-cover" id="lyricsGiantCover">
+                            <div class="lyrics-cover-ambient-glow" id="lyricsCoverGlow"></div>
+                        </div>
+                        <div class="lyrics-track-info-block">
+                            <h2 class="lyrics-track-title" id="lyricsTrackTitle">Selecciona una pista</h2>
+                            <p class="lyrics-track-artist" id="lyricsTrackArtist">Aura Music</p>
+                        </div>
+
+                        <!-- Controles sincronizados integrados en la vista expandida -->
+                        <div class="lyrics-mini-player">
+                            <div class="lyrics-progress-wrap">
+                                <span class="lyrics-time" id="lyricsCurrentTime">0:00</span>
+                                <input type="range" class="progress-bar" id="lyricsProgressBar" min="0" max="100" value="0">
+                                <span class="lyrics-time" id="lyricsTotalDuration">0:00</span>
+                            </div>
+                            <div class="lyrics-ctrl-row">
+                                <button class="ctrl-btn" id="lyricsBtnPrev" title="Anterior">
+                                    <i data-lucide="skip-back" class="ctrl-icon"></i>
+                                </button>
+                                <button class="ctrl-btn play-circle" id="lyricsBtnPlayPause" title="Reproducir / Pausar">
+                                    <i data-lucide="play" class="ctrl-icon play-symbol" id="lyricsIconPlayPause"></i>
+                                </button>
+                                <button class="ctrl-btn" id="lyricsBtnNext" title="Siguiente">
+                                    <i data-lucide="skip-forward" class="ctrl-icon"></i>
+                                </button>
+                                <button class="player-icon-action-btn btn-fav-phone" id="lyricsBtnFav" title="Favorito Móvil">
+                                    <i data-lucide="heart" class="push-icon push-icon-heart"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Costado Derecho: Letras de la Canción -->
+                    <div class="lyrics-text-column">
+                        <div class="lyrics-scroll-box" id="lyricsScrollBox">
+                            <div class="lyrics-placeholder-state" id="lyricsPlaceholder">
+                                <i data-lucide="music-2" style="width:48px; height:48px; color:var(--text-muted); opacity:0.6;"></i>
+                                <h3>Letras de Aura</h3>
+                                <p>Reproduce una canción para ver su letra aquí.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST CONTAINER -->
+        <div class="toast-container" id="toastContainer"></div>
+
+        <!-- MODAL SYNC CODE -->
+        <div class="modal-overlay" id="syncModal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <div class="modal-title-row">
+                        <i data-lucide="link" class="modal-title-icon"></i>
+                        <h3>Vincular Teléfono con Aura Sync</h3>
+                    </div>
+                    <button class="modal-close" id="btnCloseModal">
+                        <i data-lucide="x" class="close-icon"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>Ingresa el código que aparece en tu teléfono en <strong>Ajustes > Conexión de Escritorio</strong>:</p>
+                    <div class="modal-input-wrapper">
+                        <i data-lucide="hash" class="input-icon"></i>
+                        <input type="text" id="inputSyncCode" class="modal-input" placeholder="ej. aura_sync_98d4c912" spellcheck="false">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" id="btnCancelModal">Cancelar</button>
+                    <button class="btn-primary" id="btnSaveModal">Conectar y Sincronizar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DE CONFIGURACIÓN -->
+        <div class="modal-overlay" id="settingsModal">
+            <div class="settings-modal-card">
+                <div class="settings-modal-header">
+                    <div class="modal-title-row">
+                        <i data-lucide="settings" class="modal-title-icon"></i>
+                        <h3>Configuración del Reproductor</h3>
+                    </div>
+                    <button class="modal-close" id="btnCloseSettingsModal">
+                        <i data-lucide="x" class="close-icon"></i>
+                    </button>
+                </div>
+
+                <div class="settings-modal-body">
+                    <!-- TABS LATERALES DE CONFIGURACIÓN -->
+                    <div class="settings-tabs-nav">
+                        <button class="settings-tab-btn active" data-tab="tab-themes">
+                            <i data-lucide="palette"></i>
+                            <span>Temas</span>
+                        </button>
+                        <button class="settings-tab-btn" data-tab="tab-languages">
+                            <i data-lucide="languages"></i>
+                            <span>Idiomas</span>
+                        </button>
+                        <button class="settings-tab-btn" data-tab="tab-player">
+                            <i data-lucide="sliders"></i>
+                            <span>Barra Reproductor</span>
+                        </button>
+                        <button class="settings-tab-btn" data-tab="tab-sync">
+                            <i data-lucide="smartphone"></i>
+                            <span>Conexión Celular</span>
+                        </button>
+                        <button class="settings-tab-btn" data-tab="tab-about">
+                            <i data-lucide="info"></i>
+                            <span>Acerca de</span>
+                        </button>
+                    </div>
+
+                    <!-- CONTENIDO DE LAS PESTAÑAS -->
+                    <div class="settings-tabs-content">
+                        <!-- TAB TEMAS -->
+                        <div class="settings-tab-panel active" id="tab-themes">
+                            <h4 class="settings-section-title">Tema Visual</h4>
+                            <p class="settings-section-desc">Selecciona la apariencia visual que mejor se adapte a tu entorno.</p>
+                            
+                            <div class="theme-options-grid">
+                                <div class="theme-card active" data-theme-val="dark">
+                                    <div class="theme-preview theme-dark-preview">
+                                        <div class="theme-preview-top"></div>
+                                        <div class="theme-preview-body"></div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <div class="theme-name">Cyberpunk Neon</div>
+                                        <div class="theme-desc">Fondo oscuro con acentos Cyan y Pink</div>
+                                    </div>
+                                    <i data-lucide="check" class="theme-check-icon"></i>
+                                </div>
+
+                                <div class="theme-card" data-theme-val="oled">
+                                    <div class="theme-preview theme-oled-preview">
+                                        <div class="theme-preview-top"></div>
+                                        <div class="theme-preview-body"></div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <div class="theme-name">Dark OLED</div>
+                                        <div class="theme-desc">Negro puro (#000000) de alto contraste</div>
+                                    </div>
+                                    <i data-lucide="check" class="theme-check-icon"></i>
+                                </div>
+
+                                <div class="theme-card" data-theme-val="light">
+                                    <div class="theme-preview theme-light-preview">
+                                        <div class="theme-preview-top"></div>
+                                        <div class="theme-preview-body"></div>
+                                    </div>
+                                    <div class="theme-info">
+                                        <div class="theme-name">Light Glass</div>
+                                        <div class="theme-desc">Modo claro moderno con acabado translúcido</div>
+                                    </div>
+                                    <i data-lucide="check" class="theme-check-icon"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB IDIOMAS -->
+                        <div class="settings-tab-panel" id="tab-languages">
+                            <h4 class="settings-section-title">Idioma de la Interfaz</h4>
+                            <p class="settings-section-desc">Selecciona tu idioma preferido para la interfaz y los mensajes del reproductor.</p>
+                            
+                            <div class="language-options-list">
+                                <label class="language-card active">
+                                    <input type="radio" name="langSelection" value="es" checked>
+                                    <div class="language-info">
+                                        <span class="language-title">Español</span>
+                                        <span class="language-desc">Predeterminado (América Latina y España)</span>
+                                    </div>
+                                    <span class="language-badge">Activo</span>
+                                </label>
+
+                                <label class="language-card">
+                                    <input type="radio" name="langSelection" value="en">
+                                    <div class="language-info">
+                                        <span class="language-title">English</span>
+                                        <span class="language-desc">English UI & System Labels</span>
+                                    </div>
+                                    <span class="language-badge">Disponible</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- TAB REPRODUCTOR -->
+                        <div class="settings-tab-panel" id="tab-player">
+                            <h4 class="settings-section-title">Ajustes de la Barra Flotante</h4>
+                            <p class="settings-section-desc">Personaliza el tamaño, la opacidad y los efectos del dock de reproducción.</p>
+                            
+                            <div class="setting-item-row">
+                                <div class="setting-item-label">
+                                    <span class="setting-name">Ancho de la Barra Flotante</span>
+                                    <span class="setting-subtext">Ajusta el ancho del dock centrado en la pantalla</span>
+                                </div>
+                                <select class="setting-select" id="selectPlayerWidth">
+                                    <option value="580px">Compacto (580px)</option>
+                                    <option value="680px" selected>Equilibrado (680px - Predeterminado)</option>
+                                    <option value="780px">Extendido (780px)</option>
+                                </select>
+                            </div>
+
+                            <div class="setting-item-row">
+                                <div class="setting-item-label">
+                                    <span class="setting-name">Efecto de Transparencia (Glass)</span>
+                                    <span class="setting-subtext">Nivel de desenfoque y opacidad del fondo de la barra</span>
+                                </div>
+                                <select class="setting-select" id="selectPlayerOpacity">
+                                    <option value="0.75">Semitransparente (75%)</option>
+                                    <option value="0.88" selected>Estándar (88%)</option>
+                                    <option value="0.96">Sólido (96%)</option>
+                                </select>
+                            </div>
+
+                            <div class="setting-item-row">
+                                <div class="setting-item-label">
+                                    <span class="setting-name">Efecto Glow Neón</span>
+                                    <span class="setting-subtext">Resplandor cyan en el botón de reproducción</span>
+                                </div>
+                                <label class="switch-toggle">
+                                    <input type="checkbox" id="checkNeonGlow" checked>
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- TAB CONEXIÓN CELULAR -->
+                        <div class="settings-tab-panel" id="tab-sync">
+                            <h4 class="settings-section-title">Conexión con el Dispositivo Móvil</h4>
+                            <p class="settings-section-desc">Ajustes de sincronización bidireccional en tiempo real con Aura Music Android.</p>
+                            
+                            <div class="sync-card-status">
+                                <div class="sync-device-chip">
+                                    <i data-lucide="smartphone" class="sync-chip-icon"></i>
+                                    <div class="sync-chip-details">
+                                        <div class="sync-chip-title">Xiaomi 2303ERA42L</div>
+                                        <div class="sync-chip-status">
+                                            <span class="online-indicator"></span>
+                                            <span>Conectado vía Firebase Cloud Messaging</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="sync-code-box">
+                                    <span class="sync-code-label">Código de Sincronización</span>
+                                    <div class="sync-code-display">
+                                        <code id="settingsCurrentSyncCode">aura_sync_98d4c912</code>
+                                        <button class="btn-copy-code" id="btnCopySyncCode" title="Copiar código">
+                                            <i data-lucide="copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="sync-actions-row">
+                                    <button class="btn-secondary" id="btnReopenSyncModal">Cambiar Código de Vinculación</button>
+                                    <button class="btn-primary" id="btnTestSyncConnection">Probar Conexión (Ping)</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB ACERCA DE & CREADOR -->
+                        <div class="settings-tab-panel" id="tab-about">
+                            <div class="about-hero">
+                                <img src="assets/aura_logo_round.webp" alt="Aura Logo" class="about-logo">
+                                <div class="about-hero-text">
+                                    <h3 class="about-app-title">AURA MUSIC</h3>
+                                    <div class="about-app-subtitle">Desktop & Mobile Music Experience</div>
+                                    <div class="about-version-badge">Versión 2.4.0 • HyperDrive</div>
+                                </div>
+                            </div>
+
+                            <div class="creator-card">
+                                <div class="creator-badge">Creador & Arquitecto</div>
+                                <div class="creator-name">David Tineo</div>
+                                <div class="creator-bio">Diseñado y optimizado con arquitectura de alto rendimiento, sincronización en tiempo real vía Firebase Cloud Messaging y streaming AAC ultra rápido.</div>
+                            </div>
+
+                            <div class="about-links-section">
+                                <div class="about-link-row">
+                                    <div class="about-link-info">
+                                        <i data-lucide="github" class="about-link-icon"></i>
+                                        <div>
+                                            <div class="about-link-title">Repositorio Aura Music Android</div>
+                                            <div class="about-link-sub">Código fuente, versiones y documentación</div>
+                                        </div>
+                                    </div>
+                                    <button class="btn-external-link" id="btnOpenRepoLink" data-link="https://github.com/respaldoperez348-rgb/AURA-MUSIC-ANDROID">
+                                        <span>Abrir Enlace</span>
+                                        <i data-lucide="external-link"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-modal-footer">
+                    <button class="btn-secondary" id="btnCloseSettingsFooter">Cerrar</button>
+                    <button class="btn-primary" id="btnApplySettingsFooter">Guardar y Aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
