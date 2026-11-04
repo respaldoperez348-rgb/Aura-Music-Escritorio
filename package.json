@@ -7,8 +7,8 @@
     "start": "node scripts/start.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "dist:linux": "electron-builder --linux AppImage deb pacman",
-    "dist:win": "electron-builder --windows nsis",
+    "dist:linux": "electron-builder --linux AppImage deb",
+    "dist:win": "electron-builder --windows nsis zip",
     "predist:win": "node scripts/fetch-ytdlp.js"
   },
   "keywords": [
@@ -51,6 +51,7 @@
       "maintainer": "David Tineo <respaldoperez348@gmail.com>"
     },
     "win": {
+      "icon": "assets/icon.ico",
       "signAndEditExecutable": false,
       "target": [
         "nsis",

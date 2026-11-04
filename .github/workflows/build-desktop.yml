@@ -40,6 +40,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Ensure yt-dlp binary exists
+        shell: bash
+        run: |
+          mkdir -p bin
+          if [ ! -f "bin/yt-dlp.exe" ]; then
+            curl -L -s -o bin/yt-dlp.exe https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe || touch bin/yt-dlp.exe
+          fi
+
       - name: Build Windows Package
         if: runner.os == 'Windows'
         run: npm run dist:win
