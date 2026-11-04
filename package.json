@@ -7,8 +7,8 @@
     "start": "node scripts/start.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
-    "dist:linux": "electron-builder --linux AppImage deb",
-    "dist:win": "electron-builder --windows nsis zip",
+    "dist:linux": "electron-builder --linux AppImage",
+    "dist:win": "electron-builder --win",
     "predist:win": "node scripts/fetch-ytdlp.js"
   },
   "keywords": [
@@ -44,8 +44,7 @@
     "icon": "assets/icon.png",
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        "AppImage"
       ],
       "category": "AudioVideo",
       "maintainer": "David Tineo <respaldoperez348@gmail.com>"

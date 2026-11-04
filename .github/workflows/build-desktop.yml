@@ -64,7 +64,6 @@ jobs:
             dist/*.exe
             dist/*.zip
             dist/*.AppImage
-            dist/*.deb
           retention-days: 14
 
       - name: Create GitHub Release on Tag
@@ -75,7 +74,6 @@ jobs:
             dist/*.exe
             dist/*.zip
             dist/*.AppImage
-            dist/*.deb
           name: Aura Music Desktop ${{ github.ref_name }}
           body: |
             ## 🎵 Aura Music Desktop ${{ github.ref_name }}
@@ -86,7 +84,6 @@ jobs:
             - **Windows**: `Aura Music Setup 1.0.0.exe` (Instalador con soporte yt-dlp integrado)
             - **Windows Portable**: `Aura Music-1.0.0-win.zip` (Ejecutable sin instalación)
             - **Linux Universal**: `Aura Music-1.0.0.AppImage` (Ejecutable directo para cualquier distro Linux)
-            - **Linux Debian/Ubuntu**: `aura-music-desktop_1.0.0_amd64.deb`
 
             ### ⚡ Características:
             - **Fast-Path 0ms RAM Buffer**: Precarga en memoria sin esperas entre canciones.

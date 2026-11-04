@@ -44,5 +44,13 @@ download(SOURCE)
     .then(() => console.log('[fetch-ytdlp] yt-dlp.exe descargado en ./bin'))
     .catch((err) => {
         console.warn('[fetch-ytdlp] No se pudo descargar yt-dlp.exe (' + err.message + '). Se usará ytdl-core como respaldo.');
+        if (!fs.existsSync(dest)) {
+            try { fs.writeFileSync(dest, ''); } catch (e) {}
+        }
     })
-    .then(() => process.exit(0));
+    .then(() => {
+        if (!fs.existsSync(dest)) {
+            try { fs.writeFileSync(dest, ''); } catch (e) {}
+        }
+        process.exit(0);
+    });
