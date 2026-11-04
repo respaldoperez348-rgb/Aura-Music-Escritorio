@@ -5,4 +5,4 @@ service-account.json
 *firebase-adminsdk*.json
 .env
 .DS_Store
-
+bin/

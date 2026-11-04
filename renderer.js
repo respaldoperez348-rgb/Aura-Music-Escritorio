@@ -462,9 +462,22 @@ async function init() {
     refreshIcons();
 
     const code = await window.auraApi.getSyncCode();
-    if (code) {
-        updateSyncCodeUI(code);
-    }
+    updateSyncCodeUI(code);
+
+    // Avisar si Firebase no está configurado en este equipo (causa típica del error al conectar en Windows)
+    try {
+        const status = await window.auraApi.getSyncStatus();
+        if (status && !status.firebaseReady && status.error) {
+            showToast(escapeHtml(status.error), 'normal', 'alert-circle');
+        }
+    } catch (_) {}
+
+    window.auraApi.onSyncError(info => {
+        const msg = info && info.message ? info.message : 'Error desconocido';
+        let hint = '';
+        if (/PERMISSION_DENIED|permission/i.test(msg)) hint = ' (revisa los permisos de la clave de servicio en Firebase)';
+        showToast(escapeHtml(`Error de sincronización: ${msg}${hint}`), 'normal', 'alert-circle');
+    });
 
     // Escuchar actualizaciones en tiempo real desde Firestore
     window.auraApi.onSyncData(data => {
@@ -521,10 +534,22 @@ async function init() {
     showHomeView();
 }
 
+function escapeHtml(text) {
+    return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
 function updateSyncCodeUI(code) {
     pillSyncCode.textContent = code || 'Sin vincular';
     syncCodeDisplay.textContent = code || '---';
     inputSyncCode.value = code || '';
+
+    const badge = document.getElementById('pillSyncBadge');
+    if (badge) badge.textContent = code ? 'VINCULADO' : 'SIN VINCULAR';
+    const loadingCode = document.getElementById('loadingSyncCode');
+    if (loadingCode) loadingCode.textContent = code || '...';
+    const settingsCode = document.getElementById('settingsCurrentSyncCode');
+    if (settingsCode) settingsCode.textContent = code || '---';
+    if (typeof syncData === 'object' && syncData && code) syncData.syncCode = code;
 }
 
 function updateMetadataUI(meta) {
@@ -2472,12 +2497,13 @@ function setupEvents() {
         if (res && res.success) {
             showToast('Solicitud enviada por FCM. Tu teléfono está actualizando Firestore.', 'download', 'check-circle-2');
         } else {
-            showToast('Error solicitando sincronización.', 'normal', 'alert-circle');
+            showToast(escapeHtml(`Error solicitando sincronización: ${(res && res.error) || 'sin respuesta'}`), 'normal', 'alert-circle');
         }
     });
 
     // Copiar Código de Sync
     btnCopyCode.addEventListener('click', () => {
+        if (!syncData.syncCode) return;
         navigator.clipboard.writeText(syncData.syncCode);
         showToast('Código copiado al portapapeles', 'normal', 'copy');
     });
@@ -2494,11 +2520,25 @@ function setupEvents() {
 
     btnSaveModal.addEventListener('click', async () => {
         const newCode = inputSyncCode.value.trim();
-        if (newCode) {
-            await window.auraApi.setSyncCode(newCode);
-            updateSyncCodeUI(newCode);
+        if (!newCode) {
+            showToast('Escribe el código que aparece en tu teléfono.', 'normal', 'alert-circle');
+            return;
+        }
+        try {
+            const res = await window.auraApi.setSyncCode(newCode);
+            if (!res || !res.ok) {
+                showToast(escapeHtml((res && res.error) || 'No se pudo guardar el código.'), 'normal', 'alert-circle');
+                return;
+            }
+            updateSyncCodeUI(res.code);
             syncModal.classList.remove('open');
-            showToast(`Conectado al nuevo código: ${newCode}`, 'normal', 'check-circle-2');
+            if (res.firebaseReady) {
+                showToast(`Conectado al código: ${escapeHtml(res.code)}`, 'normal', 'check-circle-2');
+            } else {
+                showToast(escapeHtml(`Código guardado, pero Firebase no está listo. ${res.error || ''}`), 'normal', 'alert-circle');
+            }
+        } catch (err) {
+            showToast(escapeHtml(`Error al conectar: ${err && err.message ? err.message : err}`), 'normal', 'alert-circle');
         }
     });
 
@@ -2609,7 +2649,7 @@ function initThemeAndSettings() {
         });
 
         const syncCodeDisplay = document.getElementById('settingsCurrentSyncCode');
-        if (syncCodeDisplay) syncCodeDisplay.textContent = syncData.syncCode || 'aura_sync_98d4c912';
+        if (syncCodeDisplay) syncCodeDisplay.textContent = syncData.syncCode || '---';
 
         settingsModal.classList.add('open');
         refreshIcons();
@@ -2679,7 +2719,7 @@ function initThemeAndSettings() {
     const btnCopySyncCode = document.getElementById('btnCopySyncCode');
     if (btnCopySyncCode) {
         btnCopySyncCode.addEventListener('click', () => {
-            navigator.clipboard.writeText(syncData.syncCode || 'aura_sync_98d4c912');
+            if (syncData.syncCode) navigator.clipboard.writeText(syncData.syncCode);
             showToast('Código copiado al portapapeles', 'normal', 'copy');
         });
     }
@@ -2699,14 +2739,14 @@ function initThemeAndSettings() {
     const btnTestSyncConnection = document.getElementById('btnTestSyncConnection');
     if (btnTestSyncConnection) {
         btnTestSyncConnection.addEventListener('click', async () => {
-            showToast('Enviando señal de prueba (Ping) a Xiaomi...', 'download', 'refresh-cw');
+            showToast('Enviando señal de prueba (Ping) a tu teléfono...', 'download', 'refresh-cw');
             btnTestSyncConnection.style.opacity = '0.5';
             const res = await window.auraApi.requestFullSync();
             btnTestSyncConnection.style.opacity = '1';
             if (res && res.success) {
                 showToast('¡Conexión verificada! Tu teléfono respondió correctamente.', 'download', 'check-circle-2');
             } else {
-                showToast('No se recibió respuesta del teléfono móvil.', 'normal', 'alert-circle');
+                showToast(escapeHtml(`No se pudo contactar al teléfono: ${(res && res.error) || 'sin respuesta'}`), 'normal', 'alert-circle');
             }
         });
     }

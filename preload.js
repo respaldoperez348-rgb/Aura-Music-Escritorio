@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('auraApi', {
     onSyncData: (callback) => {
         ipcRenderer.on('sync-data-updated', (_event, data) => callback(data));
     },
+    getSyncStatus: () => ipcRenderer.invoke('get-sync-status'),
+    onSyncError: (callback) => {
+        ipcRenderer.on('sync-error', (_event, info) => callback(info));
+    },
 
     // Acciones Push-to-Phone (FCM)
     requestFullSync: () => ipcRenderer.invoke('send-fcm-action', { action: 'REQUEST_FULL_SYNC' }),

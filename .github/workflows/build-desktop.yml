@@ -1,0 +1,89 @@
+name: Build Aura Music Desktop (Windows & Linux)
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Desktop Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools libfuse2
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows Package
+        if: runner.os == 'Windows'
+        run: npm run dist:win
+
+      - name: Build Linux Package
+        if: runner.os == 'Linux'
+        run: npm run dist:linux
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aura-music-desktop-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.deb
+          retention-days: 14
+
+      - name: Create GitHub Release on Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.AppImage
+            dist/*.deb
+          name: Aura Music Desktop ${{ github.ref_name }}
+          body: |
+            ## 🎵 Aura Music Desktop ${{ github.ref_name }}
+            
+            Reproductor de música de alta fidelidad para escritorio (Windows & Linux), con sincronización en tiempo real **Push-to-Phone** con la app Aura Music Android.
+
+            ### 📦 Binarios disponibles:
+            - **Windows**: `Aura Music Setup 1.0.0.exe` (Instalador con soporte yt-dlp integrado)
+            - **Windows Portable**: `Aura Music-1.0.0-win.zip` (Ejecutable sin instalación)
+            - **Linux Universal**: `Aura Music-1.0.0.AppImage` (Ejecutable directo para cualquier distro Linux)
+            - **Linux Debian/Ubuntu**: `aura-music-desktop_1.0.0_amd64.deb`
+
+            ### ⚡ Características:
+            - **Fast-Path 0ms RAM Buffer**: Precarga en memoria sin esperas entre canciones.
+            - **Push-to-Phone Sync**: Vinculación por código FCM y control bidireccional con tu teléfono.
+            - **Letras Sincronizadas (LRCLIB)**: Visualización dinámica en tiempo real.
+            - **Soporte Local y Streaming**: Motor híbrido yt-dlp / ytdl-core.
+          draft: false
+          prerelease: false

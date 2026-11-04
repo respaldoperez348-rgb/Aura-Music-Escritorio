@@ -23,8 +23,8 @@
 
                 <div class="sync-status-pill" id="btnEditSync" title="Gestionar código de sincronización">
                     <span class="status-orb"></span>
-                    <span class="status-code" id="pillSyncCode">aura_sync_98d4c912</span>
-                    <span class="status-badge">VINCULADO</span>
+                    <span class="status-code" id="pillSyncCode">Sin vincular</span>
+                    <span class="status-badge" id="pillSyncBadge">SIN VINCULAR</span>
                 </div>
 
                 <div class="titlebar-search-box">
@@ -116,7 +116,7 @@
                 </div>
 
                 <div class="sync-code-row">
-                    <code id="syncCodeDisplay">aura_sync_98d4c912</code>
+                    <code id="syncCodeDisplay">---</code>
                     <button class="btn-copy-code" id="btnCopyCode" title="Copiar código FCM">
                         <i data-lucide="copy" class="copy-icon"></i>
                     </button>
@@ -251,7 +251,7 @@
                         <div class="empty-state">
                             <i data-lucide="loader-2" class="empty-spinner"></i>
                             <h3>Cargando biblioteca desde Firestore...</h3>
-                            <p>Conectando con tu sesión móvil <code>aura_sync_98d4c912</code></p>
+                            <p>Conectando con tu sesión móvil <code id="loadingSyncCode">...</code></p>
                         </div>
                     </section>
                 </div>
@@ -495,7 +495,7 @@
                     <p>Ingresa el código que aparece en tu teléfono en <strong>Ajustes > Conexión de Escritorio</strong>:</p>
                     <div class="modal-input-wrapper">
                         <i data-lucide="hash" class="input-icon"></i>
-                        <input type="text" id="inputSyncCode" class="modal-input" placeholder="ej. aura_sync_98d4c912" spellcheck="false">
+                        <input type="text" id="inputSyncCode" class="modal-input" placeholder="ej. aura_sync_a1b2c3d4" spellcheck="false">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -676,7 +676,7 @@
                                 <div class="sync-code-box">
                                     <span class="sync-code-label">Código de Sincronización</span>
                                     <div class="sync-code-display">
-                                        <code id="settingsCurrentSyncCode">aura_sync_98d4c912</code>
+                                        <code id="settingsCurrentSyncCode">---</code>
                                         <button class="btn-copy-code" id="btnCopySyncCode" title="Copiar código">
                                             <i data-lucide="copy"></i>
                                         </button>

@@ -187,24 +187,54 @@ async function fastYouTubeSearch(query) {
 // -------------------------------------------------------------
 // 1. Inicialización de Firebase Admin SDK
 // -------------------------------------------------------------
+let firebaseInitError = '';
+
+// Ubicaciones donde se busca la clave de servicio (en orden de prioridad).
+// En la app instalada __dirname queda dentro de app.asar, por eso ya no se depende solo de ahí.
+function getServiceAccountCandidates() {
+    const list = [];
+    if (process.env.AURA_SERVICE_ACCOUNT) list.push(process.env.AURA_SERVICE_ACCOUNT);
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) list.push(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    try { list.push(path.join(app.getPath('userData'), 'service-account.json')); } catch (_) {}
+    try { list.push(path.join(path.dirname(app.getPath('exe')), 'service-account.json')); } catch (_) {}
+    if (process.resourcesPath) list.push(path.join(process.resourcesPath, 'service-account.json'));
+    list.push(path.join(__dirname, 'service-account.json'));
+    return list;
+}
+
 function initFirebase() {
+    firebaseInitError = '';
     try {
-        const serviceAccountPath = path.join(__dirname, 'service-account.json');
-        if (fs.existsSync(serviceAccountPath)) {
-            const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
-            if (getApps().length === 0) {
-                initializeApp({
-                    credential: cert(serviceAccount)
-                });
-            }
-            firestoreDb = getFirestore();
-            fcmMessaging = getMessaging();
-            console.log(`[Firebase] Conectado exitosamente con proyecto: ${serviceAccount.project_id}`);
-        } else {
-            console.warn('[Firebase] No se encontró service-account.json en la raíz.');
+        const found = getServiceAccountCandidates().find(p => {
+            try { return fs.existsSync(p); } catch (_) { return false; }
+        });
+
+        if (!found) {
+            firebaseInitError = `No se encontró service-account.json. Cópialo en la carpeta: ${app.getPath('userData')}`;
+            console.warn(`[Firebase] ${firebaseInitError}`);
+            return;
         }
+
+        const serviceAccount = JSON.parse(fs.readFileSync(found, 'utf8'));
+        if (!serviceAccount.project_id || !serviceAccount.client_email || !serviceAccount.private_key) {
+            firebaseInitError = `El archivo ${found} no es una clave de servicio válida de Firebase (faltan project_id, client_email o private_key).`;
+            console.error(`[Firebase] ${firebaseInitError}`);
+            return;
+        }
+
+        if (getApps().length === 0) {
+            initializeApp({
+                credential: cert(serviceAccount)
+            });
+        }
+        firestoreDb = getFirestore();
+        fcmMessaging = getMessaging();
+        console.log(`[Firebase] Conectado exitosamente con proyecto: ${serviceAccount.project_id} (clave: ${found})`);
     } catch (err) {
+        firebaseInitError = `Error al inicializar Firebase: ${err.message}`;
         console.error('[Firebase] Error al inicializar Firebase Admin:', err.message);
+        firestoreDb = null;
+        fcmMessaging = null;
     }
 }
 
@@ -246,6 +276,30 @@ function saveConfig(updates) {
 // -------------------------------------------------------------
 // 3. Sincronización en Tiempo Real con Cloud Firestore
 // -------------------------------------------------------------
+const reportedSyncErrors = new Set();
+function reportSyncError(source, err) {
+    const message = (err && err.message) ? err.message : String(err);
+    console.error(`[Firestore ${source} Error]:`, message);
+    const key = `${source}:${message}`;
+    if (reportedSyncErrors.has(key)) return;
+    reportedSyncErrors.add(key);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sync-error', { source, message });
+    }
+}
+
+function normalizeSyncCode(raw) {
+    let code = String(raw || '').trim().replace(/\s+/g, '');
+    // Si solo se escribe el código corto de 8 caracteres, se completa el prefijo que usa el teléfono
+    if (/^[a-z0-9]{8}$/i.test(code)) code = `aura_sync_${code.toLowerCase()}`;
+    return code;
+}
+
+// Debe ser un nombre de topic FCM válido ([a-zA-Z0-9-_.~%]+) y un ID de documento Firestore válido
+function isValidSyncCode(code) {
+    return /^[A-Za-z0-9_.~%-]{3,100}$/.test(code) && code !== '.' && code !== '..' && !/^__.*__$/.test(code);
+}
+
 function setupFirestoreListeners(syncCode) {
     if (!firestoreDb) return;
 
@@ -285,7 +339,7 @@ function setupFirestoreListeners(syncCode) {
             sessionMeta = doc.data();
             notifyRenderer();
         }
-    }, err => console.error('[Firestore Meta Error]:', err.message));
+    }, err => reportSyncError('Meta', err));
     firestoreUnsubscribers.push(unsubMeta);
 
     // Canciones de la biblioteca
@@ -293,28 +347,28 @@ function setupFirestoreListeners(syncCode) {
         librarySongs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         console.log(`[Firestore] Canciones sincronizadas recibidas: ${librarySongs.length}`);
         notifyRenderer();
-    }, err => console.error('[Firestore Library Error]:', err.message));
+    }, err => reportSyncError('Library', err));
     firestoreUnsubscribers.push(unsubLib);
 
     // Playlists
     const unsubPlaylists = sessionDocRef.collection('playlists').onSnapshot(snap => {
         playlists = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         notifyRenderer();
-    }, err => console.error('[Firestore Playlists Error]:', err.message));
+    }, err => reportSyncError('Playlists', err));
     firestoreUnsubscribers.push(unsubPlaylists);
 
     // Artistas
     const unsubArtists = sessionDocRef.collection('artists').onSnapshot(snap => {
         artists = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         notifyRenderer();
-    }, err => console.error('[Firestore Artists Error]:', err.message));
+    }, err => reportSyncError('Artists', err));
     firestoreUnsubscribers.push(unsubArtists);
 
     // Álbumes
     const unsubAlbums = sessionDocRef.collection('albums').onSnapshot(snap => {
         albums = snap.docs.map(d => ({ browseId: d.id, ...d.data() }));
         notifyRenderer();
-    }, err => console.error('[Firestore Albums Error]:', err.message));
+    }, err => reportSyncError('Albums', err));
     firestoreUnsubscribers.push(unsubAlbums);
 }
 
@@ -388,16 +442,41 @@ ipcMain.handle('get-sync-code', () => {
 });
 
 ipcMain.handle('set-sync-code', (_event, newCode) => {
-    currentSyncCode = (newCode || '').trim();
+    const code = normalizeSyncCode(newCode);
+    if (!isValidSyncCode(code)) {
+        return {
+            ok: false,
+            error: 'Código no válido. Usa solo letras, números, guion y guion bajo (ej. aura_sync_a1b2c3d4).'
+        };
+    }
+
+    currentSyncCode = code;
     saveConfig({ syncCode: currentSyncCode });
-    setupFirestoreListeners(currentSyncCode);
-    return currentSyncCode;
+    reportedSyncErrors.clear();
+
+    try {
+        setupFirestoreListeners(currentSyncCode);
+    } catch (err) {
+        console.error('[Firestore] Error al iniciar la escucha:', err.message);
+        return { ok: true, code, firebaseReady: !!firestoreDb, error: err.message };
+    }
+
+    return { ok: true, code, firebaseReady: !!firestoreDb, error: firestoreDb ? '' : firebaseInitError };
+});
+
+ipcMain.handle('get-sync-status', () => {
+    return {
+        firebaseReady: !!firestoreDb && !!fcmMessaging,
+        error: firebaseInitError,
+        credentialDir: app.getPath('userData'),
+        syncCode: currentSyncCode
+    };
 });
 
 // Enviar comandos FCM Push-to-Phone
 ipcMain.handle('send-fcm-action', async (_event, payload) => {
     if (!fcmMessaging) {
-        return { success: false, error: 'Firebase Cloud Messaging no inicializado' };
+        return { success: false, error: firebaseInitError || 'Firebase Cloud Messaging no inicializado' };
     }
     if (!currentSyncCode) {
         return { success: false, error: 'Código de sincronización no configurado' };
@@ -782,7 +861,7 @@ ipcMain.handle('get-album-tracks', async (_event, albumInfo) => {
         if (playlistId) {
             try {
                 const jsonStr = await new Promise((resolve, reject) => {
-                    execFile('yt-dlp', ['--flat-playlist', '-J', `https://www.youtube.com/playlist?list=${playlistId}`], { maxBuffer: 10 * 1024 * 1024, timeout: 6000 }, (err, stdout) => {
+                    execFile(getYtDlpPath(), ['--flat-playlist', '-J', `https://www.youtube.com/playlist?list=${playlistId}`], { maxBuffer: 10 * 1024 * 1024, timeout: 8000, windowsHide: true }, (err, stdout) => {
                         if (err) return reject(err);
                         resolve(stdout);
                     });
@@ -832,6 +911,72 @@ ipcMain.handle('search-tracks', async (_event, query) => {
 });
 
 // Extracción de Stream de Audio ultra-optimizada con Caché Instantáneo (0 ms)
+// -------------------------------------------------------------
+// Extracción de audio: yt-dlp (incluido en el instalador de Windows) con respaldo ytdl-core
+// -------------------------------------------------------------
+let ytDlpPathCache = null;
+function getYtDlpPath() {
+    if (ytDlpPathCache) return ytDlpPathCache;
+    const exe = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+    const candidates = [
+        process.env.AURA_YTDLP,
+        process.resourcesPath ? path.join(process.resourcesPath, 'bin', exe) : null,
+        path.join(__dirname, 'bin', exe),
+        path.join(app.getPath('userData'), exe)
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+        try {
+            if (fs.existsSync(candidate)) {
+                ytDlpPathCache = candidate;
+                return candidate;
+            }
+        } catch (_) {}
+    }
+    return 'yt-dlp'; // del PATH del sistema
+}
+
+function extractWithYtDlp(url) {
+    return new Promise((resolve, reject) => {
+        execFile(getYtDlpPath(), [
+            '-g',
+            '-f', '140/ba/b',
+            '--no-playlist',
+            '--no-check-certificates',
+            '--prefer-free-formats',
+            url
+        ], { timeout: 12000, windowsHide: true }, (error, stdout) => {
+            if (error) return reject(error);
+            const line = (stdout || '').trim().split('\n')[0].trim();
+            if (line && line.startsWith('http')) resolve(line);
+            else reject(new Error('Formato no extraíble'));
+        });
+    });
+}
+
+async function extractWithYtdlCore(url) {
+    const info = await Promise.race([
+        ytdl.getInfo(url),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('ytdl-core: tiempo agotado')), 15000))
+    ]);
+    const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' });
+    if (format && format.url) return format.url;
+    throw new Error('ytdl-core: sin formato de audio');
+}
+
+async function extractAudioUrl(url) {
+    try {
+        return await extractWithYtDlp(url);
+    } catch (ytDlpErr) {
+        console.warn('[AudioStream] yt-dlp no disponible o falló, probando ytdl-core:', ytDlpErr.message);
+    }
+    try {
+        return await extractWithYtdlCore(url);
+    } catch (coreErr) {
+        console.warn('[AudioStream] ytdl-core falló:', coreErr.message);
+    }
+    return null;
+}
+
 ipcMain.handle('get-audio-stream', async (_event, trackId) => {
     try {
         let cleanId = (trackId || '').trim();
@@ -856,35 +1001,13 @@ ipcMain.handle('get-audio-stream', async (_event, trackId) => {
 
         const url = cleanId.startsWith('http') ? cleanId : `https://www.youtube.com/watch?v=${cleanId}`;
 
-        // 2. Extraer con yt-dlp flags de alta velocidad
-        try {
-            const streamUrl = await new Promise((resolve, reject) => {
-                execFile('yt-dlp', [
-                    '-g',
-                    '-f', '140/ba/b',
-                    '--no-playlist',
-                    '--no-check-certificates',
-                    '--prefer-free-formats',
-                    url
-                ], { timeout: 8000 }, (error, stdout) => {
-                    if (error) return reject(error);
-                    const line = (stdout || '').trim().split('\n')[0].trim();
-                    if (line && line.startsWith('http')) {
-                        resolve(line);
-                    } else {
-                        reject(new Error('Formato no extraíble'));
-                    }
-                });
-            });
-
-            if (streamUrl) {
-                // Guardar en caché por 5 horas (URLs de googlevideo duran 6 horas)
-                audioStreamCache.set(cleanId, { streamUrl, expiresAt: Date.now() + 5 * 3600 * 1000 });
-                console.log(`[AudioStream] Extraído y cacheado para ${cleanId}`);
-                return { success: true, streamUrl };
-            }
-        } catch (ytDlpErr) {
-            console.warn('[AudioStream] Error extrayendo:', ytDlpErr.message);
+        // 2. Extraer el enlace directo (yt-dlp -> ytdl-core)
+        const streamUrl = await extractAudioUrl(url);
+        if (streamUrl) {
+            // Guardar en caché por 5 horas (URLs de googlevideo duran 6 horas)
+            audioStreamCache.set(cleanId, { streamUrl, expiresAt: Date.now() + 5 * 3600 * 1000 });
+            console.log(`[AudioStream] Extraído y cacheado para ${cleanId}`);
+            return { success: true, streamUrl };
         }
 
         return { success: false, error: 'No se pudo extraer el enlace de audio directo.' };
@@ -909,22 +1032,12 @@ ipcMain.handle('prefetch-audio-stream', async (_event, trackId) => {
         if (cached && Date.now() < cached.expiresAt) return;
 
         const url = cleanId.startsWith('http') ? cleanId : `https://www.youtube.com/watch?v=${cleanId}`;
-        execFile('yt-dlp', [
-            '-g',
-            '-f', '140/ba/b',
-            '--no-playlist',
-            '--no-check-certificates',
-            '--prefer-free-formats',
-            url
-        ], { timeout: 8000 }, (error, stdout) => {
-            if (!error && stdout) {
-                const line = stdout.trim().split('\n')[0].trim();
-                if (line && line.startsWith('http')) {
-                    audioStreamCache.set(cleanId, { streamUrl: line, expiresAt: Date.now() + 5 * 3600 * 1000 });
-                    console.log(`[AudioStream Prefetch] Precargado en segundo plano (0 ms listos) para ${cleanId}`);
-                }
+        extractAudioUrl(url).then((streamUrl) => {
+            if (streamUrl) {
+                audioStreamCache.set(cleanId, { streamUrl, expiresAt: Date.now() + 5 * 3600 * 1000 });
+                console.log(`[AudioStream Prefetch] Precargado en segundo plano (0 ms listos) para ${cleanId}`);
             }
-        });
+        }).catch(() => {});
     } catch {}
 });
 
@@ -932,6 +1045,7 @@ ipcMain.handle('prefetch-audio-stream', async (_event, trackId) => {
 ipcMain.handle('toggle-follow-artist', async (_event, payload) => {
     try {
         if (!currentSyncCode || !payload || !payload.artistName) return { success: false };
+        if (!firestoreDb) return { success: false, error: firebaseInitError || 'Firebase no inicializado' };
         const cleanName = payload.artistName.trim();
         const artistRef = firestoreDb
             .collection('sync_sessions')

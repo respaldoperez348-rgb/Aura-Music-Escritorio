@@ -4,11 +4,12 @@
   "description": "Aura Music Desktop - Cyberpunk Audio Player & Mobile Sync Hub",
   "main": "main.js",
   "scripts": {
-    "start": "unset ELECTRON_RUN_AS_NODE && electron .",
+    "start": "node scripts/start.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "dist:linux": "electron-builder --linux AppImage deb pacman",
-    "dist:win": "electron-builder --windows nsis"
+    "dist:win": "electron-builder --windows nsis",
+    "predist:win": "node scripts/fetch-ytdlp.js"
   },
   "keywords": [
     "music",
@@ -19,7 +20,10 @@
     "sync",
     "android"
   ],
-  "author": "David Tineo",
+  "author": {
+    "name": "David Tineo",
+    "email": "respaldoperez348@gmail.com"
+  },
   "license": "MIT",
   "dependencies": {
     "@distube/ytdl-core": "^4.16.4",
@@ -37,21 +41,30 @@
     "directories": {
       "output": "dist"
     },
+    "icon": "assets/icon.png",
     "linux": {
       "target": [
         "AppImage",
-        "deb",
-        "pacman"
+        "deb"
       ],
-      "category": "AudioVideo"
+      "category": "AudioVideo",
+      "maintainer": "David Tineo <respaldoperez348@gmail.com>"
     },
     "win": {
       "signAndEditExecutable": false,
       "target": [
         "nsis",
         "zip"
+      ],
+      "extraResources": [
+        {
+          "from": "bin",
+          "to": "bin",
+          "filter": [
+            "yt-dlp.exe"
+          ]
+        }
       ]
     }
   }
 }
-
