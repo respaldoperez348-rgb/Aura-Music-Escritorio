@@ -5,22 +5,15 @@ on:
     branches: [ "main" ]
     tags:
       - "v*"
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build Desktop Release (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-
+  build-linux:
+    name: Build Linux Universal AppImage
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -31,64 +24,65 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install system dependencies (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libarchive-tools libfuse2
-
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Ensure yt-dlp binary exists
-        shell: bash
-        run: |
-          mkdir -p bin
-          if [ ! -f "bin/yt-dlp.exe" ]; then
-            curl -L -s -o bin/yt-dlp.exe https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe || touch bin/yt-dlp.exe
-          fi
+      - name: Build Linux AppImage
+        run: npx electron-builder --linux AppImage --publish never
 
-      - name: Build Windows Package
-        if: runner.os == 'Windows'
-        run: npm run dist:win
-
-      - name: Build Linux Package
-        if: runner.os == 'Linux'
-        run: npm run dist:linux
-
-      - name: Upload Artifacts
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aura-music-desktop-${{ matrix.os }}
+          name: Aura-Music-Linux
+          path: dist/*.AppImage
+
+      - name: Create or Update GitHub Release on Tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: dist/*.AppImage
+          name: Aura Music Desktop ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+  build-windows:
+    name: Build Windows Release (Installer & Portable)
+    runs-on: windows-2022
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows Installer & Zip
+        run: npx electron-builder --win nsis zip --publish never
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aura-Music-Windows
           path: |
             dist/*.exe
             dist/*.zip
-            dist/*.AppImage
-          retention-days: 14
 
-      - name: Create GitHub Release on Tag
+      - name: Create or Update GitHub Release on Tag
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             dist/*.exe
             dist/*.zip
-            dist/*.AppImage
           name: Aura Music Desktop ${{ github.ref_name }}
-          body: |
-            ## 🎵 Aura Music Desktop ${{ github.ref_name }}
-            
-            Reproductor de música de alta fidelidad para escritorio (Windows & Linux), con sincronización en tiempo real **Push-to-Phone** con la app Aura Music Android.
-
-            ### 📦 Binarios disponibles:
-            - **Windows**: `Aura Music Setup 1.0.0.exe` (Instalador con soporte yt-dlp integrado)
-            - **Windows Portable**: `Aura Music-1.0.0-win.zip` (Ejecutable sin instalación)
-            - **Linux Universal**: `Aura Music-1.0.0.AppImage` (Ejecutable directo para cualquier distro Linux)
-
-            ### ⚡ Características:
-            - **Fast-Path 0ms RAM Buffer**: Precarga en memoria sin esperas entre canciones.
-            - **Push-to-Phone Sync**: Vinculación por código FCM y control bidireccional con tu teléfono.
-            - **Letras Sincronizadas (LRCLIB)**: Visualización dinámica en tiempo real.
-            - **Soporte Local y Streaming**: Motor híbrido yt-dlp / ytdl-core.
           draft: false
           prerelease: false
